@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/env.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
   runApp(const MyApp());
@@ -28,6 +30,26 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   String _inputValue = '';
 
+  void _getListagemAPI() async {
+    try {
+      final response = await http.get(
+        Uri.https(Env.apiEndpoint, Env.apiParams),
+        headers: {
+          'authorization': 'Bearer ${Env.apiKey}',
+          'content-type': 'application/json:charset=utf-8' },
+      );
+      print(response.body);
+    } catch (e) {
+      print('Error fetching API: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getListagemAPI();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,11 +58,11 @@ class _HomePageState extends State<HomePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            const Text(
               'Wello World',
               style: TextStyle(color: Colors.white, fontSize: 20.0),
             ),
-            Text(
+            const Text(
               'Welcome my first project in flutter',
               style: TextStyle(color: Colors.white),
             ),
@@ -50,10 +72,10 @@ class _HomePageState extends State<HomePage> {
                 style: const TextStyle(color: Colors.white),
             ),
             Padding(
-              padding: EdgeInsetsGeometry.all(20),
+              padding: const EdgeInsets.all(20),
               child: TextField(
-                style: TextStyle(color: Colors.black54),
-                decoration: InputDecoration(
+                style: const TextStyle(color: Colors.black54),
+                decoration: const InputDecoration(
                   fillColor: Colors.white,
                   filled: true,
                   border: OutlineInputBorder(
@@ -63,8 +85,8 @@ class _HomePageState extends State<HomePage> {
                     borderSide: BorderSide.none,
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(width: 1, color: Colors.black)
-                  )
+                    borderSide: BorderSide(width: 1, color: Colors.black),
+                  ),
                 ),
                 onChanged: (value) {
                   setState(() {
