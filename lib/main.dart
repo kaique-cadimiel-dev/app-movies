@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/env.dart';
+import 'package:flutter_application_1/movies_response.dart';
 import 'package:http/http.dart' as http;
 
 void main() {
@@ -7,14 +9,12 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // constructor
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
       home: HomePage(),
     );
   }
@@ -28,75 +28,135 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  String _inputValue = '';
+  MoviesResponse? _movies;
+  bool _isLoading = true;
+  String? _error;
 
-  void _getListagemAPI() async {
-    try {
-      final response = await http.get(
-        Uri.https(Env.apiEndpoint, Env.apiParams),
-        headers: {
-          'authorization': 'Bearer ${Env.apiKey}',
-          'content-type': 'application/json:charset=utf-8' },
-      );
-      print(response.body);
-    } catch (e) {
-      print('Error fetching API: $e');
-    }
-  }
+  final Map<String, String> language = {'language': 'pt-BR'};
 
   @override
   void initState() {
     super.initState();
-    _getListagemAPI();
+    _loadMovies();
+  }
+
+  Future<MoviesResponse> _getListagemAPI() async {
+    final response = await http.get(
+      Uri.https(Env.apiEndpoint, Env.apiParams, language),
+      headers: {
+        'authorization': 'Bearer ${Env.apiKey}',
+        'content-type': 'application/json; charset=utf-8',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> data =
+          jsonDecode(response.body) as Map<String, dynamic>;
+
+      return MoviesResponse.fromJson(data);
+    } else {
+      throw Exception('Erro ${response.statusCode}');
+    }
+  }
+
+  Future<void> _loadMovies() async {
+    try {
+      final result = await _getListagemAPI();
+
+      setState(() {
+        _movies = result;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: Colors.grey.shade900,
+      appBar: AppBar(
+        title: const Text('App Movies', style: TextStyle(color: Colors.white)),
+        backgroundColor: Colors.black,
+      ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Wello World',
-              style: TextStyle(color: Colors.white, fontSize: 20.0),
-            ),
-            const Text(
-              'Welcome my first project in flutter',
-              style: TextStyle(color: Colors.white),
-            ),
-            const SizedBox(height: 8),
-            Text(
-                'Input Value: $_inputValue',
-                style: const TextStyle(color: Colors.white),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: TextField(
-                style: const TextStyle(color: Colors.black54),
-                decoration: const InputDecoration(
-                  fillColor: Colors.white,
-                  filled: true,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.white),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(width: 1, color: Colors.black),
-                  ),
-                ),
-                onChanged: (value) {
-                  setState(() {
-                    _inputValue = value;
-                  });
+        child: _isLoading
+            ? const CircularProgressIndicator(color: Colors.white)
+            : _error != null
+            ? Text(_error!, style: const TextStyle(color: Colors.white))
+            : ListView.builder(
+                itemCount: _movies?.results?.length ?? 0,
+                itemBuilder: (context, index) {
+                  final movie = _movies!.results![index];
+
+                  return Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Card(
+                      elevation: 8.0, // Aumenta a sombra
+                      shadowColor: Colors.black.withOpacity(0.5),
+                      color: Colors.black,
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      child: Column(
+                        children: [
+                          ClipRRect(
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(8),
+                            ),
+                            child: Image.network(
+                              movie.posterPath != null
+                                  ? 'https://image.tmdb.org/t/p/w400${movie.posterPath}'
+                                  : 'https://via.placeholder.com/150',
+                            ),
+                          ),
+                          ListTile(
+                            title: Text(
+                              movie.title ?? '',
+                              style: TextStyle(color: Colors.white),
+                            ),
+                            subtitle: Text(
+                              movie.releaseDate ?? 'Sem data',
+                              style: TextStyle(color: Colors.grey.shade400),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsetsGeometry.directional(
+                              top: 6,
+                              start: 20,
+                              end: 20,
+                              bottom: 30,
+                            ),
+                            child: Text(
+                              movie.overview ?? '',
+                              style: TextStyle(color: Colors.grey.shade600),
+                            ),
+                          ),
+                          Padding(
+                            padding: EdgeInsetsGeometry.directional(
+                              top: 6,
+                              // start: 2,
+                              end: 20,
+                              bottom: 30,
+                            ),
+                            child: Text(
+                              'Popularity: ${movie.popularity} ' 
+                              'Rate: ${movie.voteAverage.toString()}',
+                              style: TextStyle(color: Colors.grey.shade600),
+                              // textAlign: TextAlign.end,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
                 },
               ),
-            ),
-          ],
-        ),
       ),
     );
   }
